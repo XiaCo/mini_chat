@@ -1,0 +1,23 @@
+[package]
+name = "mini_chat"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "*", features = ["full"] }
+tokio-rustls = "*"
+clap = { version="4.*", features = ["derive"] }
+rustls-pemfile = "*"
+pki-types = { package = "rustls-pki-types", version = "1" }
+webpki-roots = "*"
+bytes = "*"
+
+[[bin]]
+name = "mini-chat-cli"
+path = "src/bin/client.rs"
+
+[[bin]]
+name = "mini-chat-server"
+path = "src/bin/server.rs"
