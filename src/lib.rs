@@ -1,5 +1,8 @@
-mod message;
-pub mod user;
+pub mod server;
+pub mod client;
+
+pub mod message;
 pub use message::*;
 
-pub mod connection;
+mod connection;
+pub use connection::Connection;

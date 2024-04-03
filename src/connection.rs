@@ -110,7 +110,7 @@ impl Connection {
 
 
     pub async fn write_frame(&mut self, msg: Message) -> io::Result<()> {
-        let f = new_frame(msg);
+        let f = new_frame(msg)?;
         self.conn.write(&f).await?;
 
         self.conn.flush().await
