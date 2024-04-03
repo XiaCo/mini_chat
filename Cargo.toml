@@ -13,6 +13,8 @@ rustls-pemfile = "*"
 pki-types = { package = "rustls-pki-types", version = "1" }
 webpki-roots = "*"
 bytes = "*"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [[bin]]
 name = "mini-chat-cli"
