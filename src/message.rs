@@ -1,27 +1,4 @@
-use std::io::{Error, ErrorKind, Write};
-
 use serde::{Deserialize, Serialize};
-use serde_json;
-
-pub const HEADER_KEY_LENGTH: &str = "body-length";
-
-pub const MAX_FRAME_LENGTH: usize = 1024 * 4;
-
-pub type Frame = Vec<u8>;
-
-pub fn new_frame(v: Message) -> Result<Frame, Error> {
-    let body = serde_json::to_vec(&v).unwrap();
-    let headers = format!("{}:{}\n", HEADER_KEY_LENGTH, body.len());
-    let mut f: Frame = Vec::with_capacity(headers.len() + body.len());
-
-    let n1 = f.write(headers.as_bytes())?;
-    let n2 = f.write(&body)?;
-    if (n1 + n2) > MAX_FRAME_LENGTH {
-        return Err(Error::new(ErrorKind::InvalidData, "too large frame"));
-    }
-
-    Ok(f)
-}
 
 /*
 注册
@@ -83,7 +60,7 @@ pub struct CreateGroupReq {
     pub group_pwd: String,
 }
 
-pub trait ServerHandle {
+pub trait Handle {
     fn sign_up(req: SignUpReq) -> Message; // UserToken
     fn sign_in(req: SignInReq) -> Message; // UserToken
     fn search_online(req: SearchOnlineReq) -> Message; // Ok

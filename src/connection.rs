@@ -1,12 +1,21 @@
-use std::io::{self, Cursor};
+use std::io::{self, Cursor, ErrorKind};
+use std::sync::atomic::AtomicU32;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
 
 use bytes::{Buf, BytesMut};
 
-use crate::{new_frame, Message};
+use crate::{Message};
 
+pub type Frame = Vec<u8>;
+static FRAME_ID: AtomicU32 = AtomicU32::new(0);
+
+pub const MAX_FRAME_LENGTH: usize = 1024 * 4;
+pub const HEADER_KEY_LENGTH: &str = "body-length";
+pub const HEADER_FRAME_ID: &str = "frame-id";
+
+// Connection.buffer max size
 const MAX_BUFFER_LENGTH: usize = 1024 * 8;
 
 // 从 tcp 连接中读取字节流放到 buffer 中
@@ -69,7 +78,7 @@ impl Connection {
         // 读一行
         let buf = Cursor::new(&self.buffer[..]);
         let buf_length = buf.get_ref().len();
-        let line_u8 = Connection::get_line(buf, crate::MAX_FRAME_LENGTH)?;
+        let line_u8 = Connection::get_line(buf, MAX_FRAME_LENGTH)?;
         let line = String::from_utf8_lossy(line_u8);
 
         // 解析 header
@@ -77,7 +86,7 @@ impl Connection {
         let mut body_length: usize = 0;
         for i in 0..headers.len() {
             let item = headers[i];
-            if item == crate::HEADER_KEY_LENGTH && i < headers.len() - 1 {
+            if item == HEADER_KEY_LENGTH && i < headers.len() - 1 {
                 body_length = headers[i - 1].parse()?
             }
         }
@@ -108,11 +117,33 @@ impl Connection {
         Err(Error::Incomplete)
     }
 
+    // 封装通信包，填充字节流长度，帧id
+    fn new_frame(v: Message) -> Result<Frame, io::Error> {
+        let body = serde_json::to_vec(&v).unwrap();
+        let headers = format!(
+            "{}:{} {}:{}\n",
+            HEADER_KEY_LENGTH,
+            body.len(),
+            HEADER_FRAME_ID,
+            FRAME_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed), // 自增 id
+        );
+        let mut f: Frame = Vec::with_capacity(headers.len() + body.len());
+    
+        let n1 = io::Write::write(&mut f, headers.as_bytes())?;
+        let n2 = io::Write::write(&mut f, &body)?;
+        if (n1 + n2) > MAX_FRAME_LENGTH {
+            return Err(io::Error::new(ErrorKind::InvalidData, "too large frame"));
+        }
+    
+        Ok(f)
+    }
 
     pub async fn write_frame(&mut self, msg: Message) -> io::Result<()> {
-        let f = new_frame(msg)?;
+        let f = Connection::new_frame(msg)?;
         self.conn.write(&f).await?;
 
         self.conn.flush().await
     }
 }
+
+

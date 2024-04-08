@@ -1,4 +1,4 @@
-use crate::{Connection, Message, ServerHandle};
+use crate::{Connection, Message, Handle};
 
 pub struct ChatServerInMemory {
     
